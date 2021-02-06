@@ -4,7 +4,7 @@ Adds an interface for the [VIRTUFIT WATER RESISTANCE ROW 1000](https://virtufit.
 
 ## Electrical Interface
 
-![Closeup of the sensors on the cable spool](images/sensors.jpg)
+![Closeup of the sensors on the cable spool](images/sensor.jpg)
 
 Two magnetic sensors configured for quadrature encoding of
 direction and velocity.  The cable spool has two magnets on it
