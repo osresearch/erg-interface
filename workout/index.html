@@ -59,7 +59,7 @@ function setup()
 	background(0);
 
 	// connect to the rower's websocket and append any new data as it comes in
-	let connection = new WebSocket('ws://192.168.178.50:81/', ['arduino']);
+	let connection = new WebSocket('ws://' + location.hostname + ':81/', ['rower']);
 	connection.onopen = function () { connection.send('Connect ' + new Date()); };
 	connection.onerror = function (error) { console.log('WebSocket Error ', error);};
 	connection.onmessage = function (e) {

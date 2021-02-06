@@ -36,6 +36,10 @@ static char device_id[16];
 ESP8266WebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
 
+static const uint8_t webpage[] = {
+#include "index.gz.h"
+};
+
 void
 webSocketEvent(
 	uint8_t num,
@@ -109,16 +113,9 @@ void setup()
 	MDNS.begin(WIFI_HOSTNAME);
 
 	server.on("/", []() {
-        // send index.html
-        server.send(200, "text/html",
-"<html><head><script>"
-"var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);"
-"connection.onopen = function () { connection.send('Connect ' + new Date()); };"
-"connection.onerror = function (error) { console.log('WebSocket Error ', error);};"
-"connection.onmessage = function (e) { console.log('Server: ', e.data);};"
-"</script></head>"
-"<body>LED Control:<br/><br/>R: <input id=\"r\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>G: <input id=\"g\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>B: <input id=\"b\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/></body></html>");
-    });
+        	// send index.html (should be gzip'ed, but :whatever:)
+        	server.send(200, "text/html", webpage, sizeof(webpage));
+	});
 
     server.begin();
 

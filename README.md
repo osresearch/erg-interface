@@ -21,6 +21,11 @@ a debounce filter on the input.
 
 Serial 115200 baud, prints columns of data.
 
+To update the embedded HTML:
+```
+xxd -i < workout/index.html > erg_code/index.html.h
+```
+
 ## BLE FTMS
 
 TODO.
