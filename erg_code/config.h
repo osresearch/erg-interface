@@ -1,0 +1,5 @@
+#pragma once
+
+#define WIFI_SSID "PUT YOUR SSID HERE"
+#define WIFI_PASSWORD "AND THE PASSWORD HERE"
+#define WIFI_HOSTNAME "rower"
