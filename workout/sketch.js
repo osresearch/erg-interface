@@ -29,6 +29,7 @@ function setup()
 
 let last_sx = 0;
 let last_sy = 0;
+let total_work = 0;
 
 function draw_stroke(d,w,h)
 {
@@ -40,6 +41,7 @@ function draw_stroke(d,w,h)
 		rect(0, 0, w, h);
 		last_sx = 0;
 		last_sy = 0;
+		total_work = 0;
 
 		strokeWeight(1);
 		noFill();
@@ -47,10 +49,19 @@ function draw_stroke(d,w,h)
 		line(0,h/2, w, h/2);
 	}
 
+	let vel = d[2] / 1e4;
+	if (vel > 0)
+	{
+		let force = vel * vel;
+		total_work += force;
+	} else {
+		force = -vel * vel;
+	}
+
 	strokeWeight(2);
 	stroke(0,255,0);
 	let sx = d[1] * w / 3e6; // up to 3 seconds of display
-	let sy = -d[2] * h/2 / 1e5;
+	let sy = -vel * h/2 / 5;
 
 	if (sx > w)
 		sx = w;
@@ -69,7 +80,8 @@ function draw_stroke(d,w,h)
 	fill(0,255,0);
 	textAlign(RIGHT, BOTTOM);
 	textSize(50);
-	text(int(d[3] / 1e3), w, 50);
+	//text(int(d[3] / 1e3), w, 50);
+	text(int(total_work), w, 50);
 }
 
 function draw_strip(d,w,h)
@@ -84,6 +96,22 @@ function draw_strip(d,w,h)
 	rect(0,0,w,h);
 
 	noFill();
+	stroke(50);
+	strokeWeight(1);
+	line(0, h -  0*sy, w, h -  0*sy);
+	line(0, h - 10*sy, w, h - 10*sy);
+	line(0, h - 20*sy, w, h - 20*sy);
+	line(0, h - 30*sy, w, h - 30*sy);
+	line(0, h - 40*sy, w, h - 40*sy);
+	line(0, h - 50*sy, w, h - 50*sy);
+	line(0, h - 60*sy, w, h - 60*sy);
+
+	for(let t = 0 ; t < delta ; t += 15 * 1e6)
+		line(t*sx, 0, t*sx, h);
+	stroke(100);
+	for(let t = 0 ; t < delta ; t += 60 * 1e6)
+		line(t*sx, 0, t*sx, h);
+
 	stroke(0xff);
 	strokeWeight(2);
 	beginShape();
