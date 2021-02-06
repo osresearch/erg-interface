@@ -6,6 +6,7 @@ let new_data = null;
 let data = [];
 let total_work = 0;
 let last_work = 0;
+let total_strokes = 0;
 
 function setup()
 {
@@ -35,6 +36,7 @@ function setup()
 		{
 			last_work = int(total_work);
 			new_data[3] = int(total_work);
+			total_strokes++;
 		}
 	};
 }
@@ -156,6 +158,8 @@ function draw()
 	textSize(50);
 	textAlign(RIGHT, BOTTOM);
 	text(new_data[4], width-400, 100);
+	textAlign(LEFT, BOTTOM);
+	text(total_strokes, 0, 100);
 
 	pop();
 
@@ -169,6 +173,31 @@ function draw()
 	textSize(50);
 	textAlign(RIGHT, BOTTOM);
 	text(int(last_work), width-400, 100);
+
+	textAlign(LEFT, BOTTOM);
+	let total_time = int((new_data[0] - data[0][0]) / 1000);
+	let total_ms = total_time % 1000;
+	total_time = int(total_time / 1000);
+	let total_sec = total_time % 60;
+	total_time = int(total_time / 60);
+	let total_min = total_time;
+	
+	if (total_sec == 0)
+		total_sec = "00";
+	else
+	if (total_sec < 10)
+		total_sec = "0" + total_sec;
+
+	if (total_ms == 0)
+		total_ms = "000";
+	else
+	if (total_ms < 10)
+		total_ms = "00" + total_ms;
+	if (total_ms < 100)
+		total_ms = "0" + total_ms;
+
+	let time_str = total_min + ":" + total_sec + "." + total_ms;
+	text(time_str, 0, 100);
 
 	pop();
 
