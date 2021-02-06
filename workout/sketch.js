@@ -19,6 +19,9 @@ function setup()
 	connection.onerror = function (error) { console.log('WebSocket Error ', error);};
 	connection.onmessage = function (e) {
 		console.log('Server: ', e.data);
+		if (e.data == "Connected")
+			return;
+
 		let cols = e.data.split(',');
 		data.push(cols);
 	};
@@ -27,39 +30,97 @@ function setup()
 let last_sx = 0;
 let last_sy = 0;
 
+function draw_stroke(d,w,h)
+{
+	// if the time stamp on the new data is 0, then this is
+	// the start of a new stroke.  decay the old chart a little bit
+	if (d[1] == 0) {
+		noStroke();
+		fill(0, 0, 0, 5);
+		rect(0, 0, w, h);
+		last_sx = 0;
+		last_sy = 0;
+
+		strokeWeight(1);
+		noFill();
+		stroke(50);
+		line(0,h/2, w, h/2);
+	}
+
+	strokeWeight(2);
+	stroke(0,255,0);
+	let sx = d[1] * w / 3e6; // up to 3 seconds of display
+	let sy = -d[2] * h/2 / 1e5;
+
+	if (sx > w)
+		sx = w;
+	if (sy > h/2)
+		sy = h/2;
+	if (sy < -h/2)
+		sy = -h/2;
+
+	line(last_sx, last_sy+h/2, sx, sy+h/2);
+	last_sx = sx;
+	last_sy = sy;
+
+	noStroke();
+	fill(0);
+	rect(w-200,0,200,50);
+	fill(0,255,0);
+	textAlign(RIGHT, BOTTOM);
+	textSize(50);
+	text(int(d[3] / 1e3), w, 50);
+}
+
+function draw_strip(d,w,h)
+{
+	let now = d[0];
+	let start = data[0][0];
+	let delta = now - start;
+	let sx = w / (delta+1);
+	let sy = h / 60.0;
+
+	fill(0);
+	rect(0,0,w,h);
+
+	noFill();
+	stroke(0xff);
+	strokeWeight(2);
+	beginShape();
+
+	for(let p of data)
+	{
+		if (p[1] != 0)
+			continue;
+		let x = (p[0] - start) * sx;
+		let y = (p[4] / 10.0) * sy;
+		vertex(x, h - y);
+	}
+
+	endShape();
+
+	fill(0xff);
+	noStroke();
+	textSize(50);
+	textAlign(RIGHT, BOTTOM);
+	text(int(delta / 1e6), w, 50);
+	text(d[4] / 10.0, w, 100);
+
+}
+
 function draw()
 {
-	//background(0);
-	//textSize(128);
-	//textAlign(RIGHT, BOTTOM);
-
 	// retrieve the most recent data
 	let d = data[data.length-1];
 	if (!d)
 		return;
 
-	// if the time stamp on the new data is 0, then this is
-	// the start of a new stroke
-	if (d[1] == 0) {
-		noStroke();
-		fill(0, 0, 0, 10);
-		rect(0, 0, 400, 200);
-		last_sx = 0;
-		last_sy = 0;
-	}
-	strokeWeight(2);
-	stroke(0,255,0);
-	let sx = d[1] * 100 / 1e6; // microseconds to ~100 pixels per second, up to 4 seconds
-	let sy = -d[2] * 100 / 1e5;
+	push();
+	draw_stroke(d, 400, 200);
+	pop();
 
-	if (sx > 400)
-		sx = 400;
-	if (sy > 100)
-		sy = 100;
-	if (sy < -100)
-		sy = -100;
-
-	line(last_sx, last_sy+100, sx, sy+100);
-	last_sx = sx;
-	last_sy = sy;
+	push();
+	translate(400,0);
+	draw_strip(d, width-400, 200);
+	pop();
 }
