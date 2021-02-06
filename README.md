@@ -1,10 +1,10 @@
-![images/breadboard.jpg](ESP8266 on a breadboard on the water rower)
+![ESP8266 on a breadboard on the water rower](images/breadboard.jpg)
 
 Adds an interface for the [VIRTUFIT WATER RESISTANCE ROW 1000](https://virtufit.nl/product/virtufit-foldable-water-resistance-row-1000-roeitrainer/) rowing machine to provide custom stats.  In extreme early development stage.
 
 ## Electrical Interface
 
-![images/sensors.jpg](Closeup of the sensors on the cable spool)
+![Closeup of the sensors on the cable spool](images/sensors.jpg)
 
 Two magnetic sensors configured for quadrature encoding of
 direction and velocity.  The cable spool has two magnets on it
@@ -17,7 +17,7 @@ a debounce filter on the input.
 
 ## Software Interface
 
-![images/power.png](Plot of the power from some different strokes)
+![Plot of the power from some different strokes](images/power.png)
 
 Serial 115200 baud, prints columns of data.
 
