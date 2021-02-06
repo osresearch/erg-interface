@@ -16,8 +16,32 @@
 <meta property="og:image" content="https://live.staticflickr.com/4472/37526022032_d7afc7358d.jpg">
   </head>
   <body>
+<form id="uploadForm">
+<input id="fileDownload" type="button" value="Download CSV" onclick="download()"/>
+</form>
+
 <div id="sketch-holder">
       <!-- Our sketch will go here! -->
 </div>
+
+<script>
+function download()
+{
+	let csv = "";
+	csv += "time,stroke_usec,vel,bad,spm\n";
+	for(var d of data)
+		csv += d.join(",") + "\n";
+	
+	var element = document.createElement('a');
+	csv = encodeURIComponent(csv);
+	element.setAttribute('href', 'data:text/plain;charset=utf-8,' + csv);
+	element.setAttribute('download', "workout.csv");
+	element.style.display = 'none';
+	document.body.appendChild(element);
+	element.click();
+	document.body.removeChild(element);
+}
+
+</script>
   </body>
 </html>
