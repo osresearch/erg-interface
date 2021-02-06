@@ -221,7 +221,7 @@ void loop()
 		{
 			// sign change: this is the start of a new stroke
 			const unsigned stroke_delta = now - start_usec;
-			spm = (600000000L / stroke_delta + spm * 3) / 4;
+			spm = 600000000L / stroke_delta;
 			
 			start_usec = now;
 			stroke_power = 0;
