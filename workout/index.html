@@ -59,8 +59,10 @@ function setup()
 	background(0);
 
 	// connect to the rower's websocket and append any new data as it comes in
-	let connection = new WebSocket('ws://' + location.hostname + ':81/', ['arduino']);
-	//let connection = new WebSocket('ws://192.168.178.50:81/', ['arduino']);
+	let host = location.hostname;
+	if (!host)
+		host = "192.168.178.50";
+	let connection = new WebSocket('ws://' + host + ':81/', ['arduino']);
 	connection.onopen = function () { connection.send('Connect ' + new Date()); };
 	connection.onerror = function (error) { console.log('WebSocket Error ', error);};
 	connection.onmessage = function (e) {
@@ -113,7 +115,7 @@ function draw_stroke(d,w,h)
 
 	strokeWeight(2);
 	stroke(0,255,0);
-	let sx = d[1] * w / 2e6; // up to 2 seconds of display
+	let sx = d[1] * w / 1e6; // 1 second of display for the pull curve
 	let sy = d[3] * h / 65.0; // "drag-force" goes up to around 60kg
 
 	if (sx > w)
