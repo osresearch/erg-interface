@@ -1,6 +1,13 @@
 /*
  * Rowing machine interface.
  *
+ * Websocket outputs:
+ * - Workout time in usec
+ * - Stroke time in usec
+ * - Drag force
+ * - Power
+ * - Cadence
+ *
  * Quadrature decoder
  * Timestampped velocity output
  * Strokes/minute computation
@@ -206,15 +213,22 @@ void loop()
 
 	// need a scaling factor to compute how much
 	// force they are applying.
-	const int force = 1000000000L / delta_usec;
+	const int vel = 100000000L / delta_usec;
+	const int force = vel * vel;
 
 	// on positive velocity pulls, check for a sign change
 	// for tracking power and distance
 	if (delta_usec > 0)
 	{
+		// if the delta_usec is too fast, this is probably an error
+		// and we should discard this point.100000000
+		if (delta_usec < 2500)
+			return;
+
 		if (last_delta_usec < 0)
 		{
 			// sign change: this is the start of a new stroke
+			// compute spm * 10
 			const unsigned stroke_delta = now - start_usec;
 			spm = 600000000L / stroke_delta;
 			
@@ -230,7 +244,7 @@ void loop()
 
 	last_delta_usec = delta_usec;
 
-	String msg = String("") + now + "," + (now - start_usec) + "," + force + "," + stroke_power + "," + spm;
+	String msg = String("") + now + "," + (now - start_usec) + "," + delta_usec + "," + force + "," + stroke_power + "," + spm;
 	Serial.println(msg);
 	webSocket.broadcastTXT(msg);
 }
