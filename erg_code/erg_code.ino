@@ -6,6 +6,14 @@
  * Strokes/minute computation
  * BLE "Fitness Machine Service" (FMTS) interface
  */
+#include <Arduino.h>
+
+#include <ESP8266WiFi.h>
+#include <WebSocketsServer.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+#include <Hash.h>
+
 
 /*
  * Quadrature modes:
@@ -22,6 +30,38 @@
 #define LED_A 0
 #define LED_B 2
 
+#include "config.h"
+static char device_id[16];
+
+ESP8266WebServer server(80);
+WebSocketsServer webSocket = WebSocketsServer(81);
+
+void
+webSocketEvent(
+	uint8_t num,
+	WStype_t type,
+	uint8_t * payload,
+	size_t length
+)
+{
+	switch(type) {
+        case WStype_DISCONNECTED:
+		Serial.printf("[%u] Disconnected!\n", num);
+		break;
+        case WStype_CONNECTED:
+		{
+		IPAddress ip = webSocket.remoteIP(num);
+		Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+
+		// send message to client
+		webSocket.sendTXT(num, "Connected");
+		}
+		break;
+        case WStype_TEXT:
+		Serial.printf("[%u] get Text: %s\n", num, payload);
+		break;
+	}
+}
 
 void setup()
 {
@@ -33,6 +73,58 @@ void setup()
 
 	pinMode(LED_A, OUTPUT);
 	pinMode(LED_B, OUTPUT);
+
+	uint8_t mac_bytes[6];
+	WiFi.macAddress(mac_bytes);
+	snprintf(device_id, sizeof(device_id), "%02x%02x%02x%02x%02x%02x",
+		mac_bytes[0],
+		mac_bytes[1],
+		mac_bytes[2],
+		mac_bytes[3],
+		mac_bytes[4],
+		mac_bytes[5]
+	);
+
+	Serial.println(String(device_id) + " connecting to " + String(WIFI_SSID));
+	WiFi.persistent(false);
+	WiFi.mode(WIFI_STA);
+	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+	Serial.print(".");
+
+	while (WiFi.status() != WL_CONNECTED ) {
+		digitalWrite(LED_A, 1);
+		delay(100);
+		digitalWrite(LED_A, 0);
+		Serial.print(".");
+	}
+
+	Serial.println("WiFi connected\r\n");
+	Serial.print("IP address: ");
+	Serial.println(WiFi.localIP());
+
+	// start webSocket server
+	webSocket.begin();
+	webSocket.onEvent(webSocketEvent);
+
+	MDNS.begin(WIFI_HOSTNAME);
+
+	server.on("/", []() {
+        // send index.html
+        server.send(200, "text/html",
+"<html><head><script>"
+"var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);"
+"connection.onopen = function () { connection.send('Connect ' + new Date()); };"
+"connection.onerror = function (error) { console.log('WebSocket Error ', error);};"
+"connection.onmessage = function (e) { console.log('Server: ', e.data);};"
+"</script></head>"
+"<body>LED Control:<br/><br/>R: <input id=\"r\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>G: <input id=\"g\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>B: <input id=\"b\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/></body></html>");
+    });
+
+    server.begin();
+
+    // Add service to MDNS
+    MDNS.addService("http", "tcp", 80);
+    MDNS.addService("ws", "tcp", 81);
 }
 
 int last_a;
@@ -53,6 +145,9 @@ unsigned spm;
 
 void loop()
 {
+	webSocket.loop();
+	server.handleClient();
+
 	int got_tick = 0;
 	const int a = digitalRead(QUAD_A);
 	const int b = digitalRead(QUAD_B);
@@ -140,14 +235,7 @@ void loop()
 
 	last_delta_usec = delta_usec;
 
-	Serial.print(now);
-	Serial.print(" ");
-	Serial.print(now - start_usec);
-	Serial.print(" ");
-	Serial.print(force);
-	Serial.print(" ");
-	Serial.print(delta_usec > 0 ? stroke_power : 0);
-	Serial.print(" ");
-	Serial.print(spm);
-	Serial.println();
+	String msg = String("") + now + "," + (now - start_usec) + "," + force + "," + stroke_power + "," + spm;
+	Serial.println(msg);
+	webSocket.broadcastTXT(msg);
 }
