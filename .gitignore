@@ -1,0 +1,6 @@
+config.h
+*.log
+*.cap
+*.csv
+.*.d
+.*.swp
