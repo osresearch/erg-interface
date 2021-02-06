@@ -4,10 +4,8 @@
  * Quadrature decoder
  * Timestampped velocity output
  * Strokes/minute computation
- * BLE "Fitness Machine Service" (FMTS) interface
  */
 #include <Arduino.h>
-
 #include <ESP8266WiFi.h>
 #include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
@@ -37,7 +35,7 @@ ESP8266WebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
 
 static const uint8_t webpage[] = {
-#include "index.gz.h"
+#include "index.html.h"
 };
 
 void
