@@ -25,7 +25,7 @@
 function download()
 {
 	let csv = "";
-	csv += "time,stroke_usec,vel,bad,spm\n";
+	csv += "time,stroke_usec,tick_usec,force,power,spm\n";
 	for(var d of data)
 		csv += d.join(",") + "\n";
 	
@@ -60,6 +60,7 @@ function setup()
 
 	// connect to the rower's websocket and append any new data as it comes in
 	let connection = new WebSocket('ws://' + location.hostname + ':81/', ['arduino']);
+	//let connection = new WebSocket('ws://192.168.178.50:81/', ['arduino']);
 	connection.onopen = function () { connection.send('Connect ' + new Date()); };
 	connection.onerror = function (error) { console.log('WebSocket Error ', error);};
 	connection.onmessage = function (e) {
@@ -69,14 +70,16 @@ function setup()
 
 		new_data = e.data.split(',');
 
-		// fix up the spm colun
-		new_data[4] /= 10.0;
+		// fix up the power and spm colun
+		new_data[3] /= 500000.0;
+		new_data[4] /= 500000.0;
+		new_data[5] /= 10.0;
 
 		// fake out the last power measurement, just in case
 		if (new_data[1] == 0)
 		{
 			last_work = int(total_work);
-			new_data[3] = int(total_work);
+			new_data[4] = int(total_work);
 			total_strokes++;
 		}
 	};
@@ -95,38 +98,35 @@ function draw_stroke(d,w,h)
 		rect(0, 0, w, h);
 		last_sx = 0;
 		last_sy = 0;
-		total_work = 0;
 
 		strokeWeight(1);
 		noFill();
 		stroke(50);
 		line(0,h/2, w, h/2);
+		line(0,h*3/4, w, h*3/4);
+		line(0,h/4, w, h/4);
 	}
 
-	let vel = d[2] / 5000;
-	if (vel > 0)
-	{
-		let force = vel * vel;
-		total_work += force;
-	} else {
-		force = -vel * vel;
-	}
+	// don't draw for the return stroke
+	if (d[2] < 0)
+		return;
 
 	strokeWeight(2);
 	stroke(0,255,0);
-	let sx = d[1] * w / 3e6; // up to 3 seconds of display
-	let sy = -vel * h/2 / 10;
+	let sx = d[1] * w / 2e6; // up to 2 seconds of display
+	let sy = d[3] * h / 65.0; // "drag-force" goes up to around 60kg
 
 	if (sx > w)
 		sx = w;
-	if (sy > h/2)
-		sy = h/2;
-	if (sy < -h/2)
-		sy = -h/2;
+	if (sy > h)
+		sy = h;
 
-	line(last_sx, last_sy+h/2, sx, sy+h/2);
+	line(last_sx, h - last_sy, sx, h - sy);
 	last_sx = sx;
 	last_sy = sy;
+
+	// need a scale factor for the work done on this stroke
+	total_work = d[4];
 
 	noStroke();
 	fill(0);
@@ -192,13 +192,13 @@ function draw()
 	// draw the strokes per minute
 	push();
 	translate(400,0);
-	draw_strip(new_data, width-400, 200, 4, 60, 10);
+	draw_strip(new_data, width-400, 200, 5, 60, 10);
 
 	fill(0xff);
 	noStroke();
 	textSize(50);
 	textAlign(RIGHT, BOTTOM);
-	text(new_data[4], width-400, 100);
+	text(new_data[5], width-400, 100);
 	textAlign(LEFT, BOTTOM);
 	text(total_strokes, 0, 100);
 
@@ -207,7 +207,7 @@ function draw()
 	// draw the power per minute
 	push();
 	translate(400,200);
-	draw_strip(new_data, width-400, 200, 3, 1000, 100);
+	draw_strip(new_data, width-400, 200, 4, 500, 100);
 
 	fill(0xff);
 	noStroke();
