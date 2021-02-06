@@ -106,10 +106,10 @@ function draw_strip(d,w,h)
 	line(0, h - 50*sy, w, h - 50*sy);
 	line(0, h - 60*sy, w, h - 60*sy);
 
-	for(let t = 0 ; t < delta ; t += 15 * 1e6)
+	for(let t = 15e6 ; t < delta ; t += 15 * 1e6)
 		line(t*sx, 0, t*sx, h);
 	stroke(100);
-	for(let t = 0 ; t < delta ; t += 60 * 1e6)
+	for(let t = 60e6 ; t < delta ; t += 60 * 1e6)
 		line(t*sx, 0, t*sx, h);
 
 	stroke(0xff);
