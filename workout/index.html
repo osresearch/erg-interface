@@ -147,6 +147,8 @@ function draw_strip(d,w,h,index,max,scale_step)
 	let delta = now - start;
 	let sx = w / (delta+1);
 	let sy = h / max;
+	let total = 0;
+	let samples = 0;
 
 	fill(0);
 	rect(0,0,w,h);
@@ -171,12 +173,18 @@ function draw_strip(d,w,h,index,max,scale_step)
 	{
 		if (p[1] != 0)
 			continue;
+		let v = p[index];
+		total += v;
+		samples++;
+
 		let x = (p[0] - start) * sx;
-		let y = p[index] * sy;
+		let y = v * sy;
 		vertex(x, h - y);
 	}
 
 	endShape();
+
+	return [total,delta,samples];
 }
 
 function draw()
@@ -194,22 +202,22 @@ function draw()
 	// draw the strokes per minute
 	push();
 	translate(400,0);
-	draw_strip(new_data, width-400, 200, 5, 60, 10);
+	let [spm_sum,spm_dt,spm_samples] =
+		draw_strip(new_data, width-400, 200, 5, 60, 10);
 
 	fill(0xff);
 	noStroke();
 	textSize(50);
 	textAlign(RIGHT, BOTTOM);
 	text(new_data[5], width-400, 100);
-	textAlign(LEFT, BOTTOM);
-	text(total_strokes, 0, 100);
 
 	pop();
 
 	// draw the power per minute
 	push();
 	translate(400,200);
-	draw_strip(new_data, width-400, 200, 4, 500, 100);
+	let [power_total,power_dt,power_samples] =
+		draw_strip(new_data, width-400, 200, 4, 500, 100);
 
 	fill(0xff);
 	noStroke();
@@ -217,8 +225,47 @@ function draw()
 	textAlign(RIGHT, BOTTOM);
 	text(int(last_work), width-400, 100);
 
-	textAlign(LEFT, BOTTOM);
-	let total_time = int((new_data[0] - data[0][0]) / 1000);
+	pop();
+
+	// count the number of positive ticks to estimate distance
+	let ticks = 0;
+	for(let d of data)
+	{
+		if (d[2] > 0)
+			ticks++;
+	}
+
+	const ticks_to_m = 1.18;
+	let distance = (ticks * ticks_to_m).toFixed(1);
+
+	// draw the summary stats at the bottom in a large font
+	push();
+	translate(0,400);
+
+	fill(0);
+	noStroke();
+	rect(0,0, width, 150);
+
+	fill(0xff);
+	textSize(60);
+	textAlign(RIGHT, BOTTOM);
+
+	// average strokes per minute (scaled from microseconds)
+	let spm_avg = "???"
+	if (spm_dt != 0)
+		spm_avg = (spm_samples / (spm_dt / 60e6)).toFixed(1);
+
+	// total strokes @ avg cadence
+	text(spm_samples + " strokes @ " + spm_avg + "/min", width, 70);
+
+	// total power and average per stroke
+	let power_avg = "???";
+	if (power_samples != 0)
+		power_avg = (power_total / power_samples).toFixed(0);
+	text(power_total + " power @ " + power_avg + "/stroke", width, 130);
+
+	// workout time
+	let total_time = int(power_dt / 1000);
 	let total_ms = total_time % 1000;
 	total_time = int(total_time / 1000);
 	let total_sec = total_time % 60;
@@ -239,8 +286,12 @@ function draw()
 	if (total_ms < 100)
 		total_ms = "0" + total_ms;
 
-	let time_str = total_min + ":" + total_sec + "." + total_ms;
-	text(time_str, 0, 100);
+	//let time_str = total_min + ":" + total_sec + "." + total_ms;
+	let time_str = total_min + ":" + total_sec + " / " + distance;
+
+	textSize(100);
+	textAlign(LEFT, BOTTOM);
+	text(time_str, 0, 120);
 
 	pop();
 
