@@ -14,11 +14,13 @@
  * Timestampped velocity output
  * Strokes/minute computation
  */
+#define CONFIG_LEDS
+#define CONFIG_WEBSERVER
+
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
 
 #include <SPI.h>
 #include <Wire.h>
@@ -33,7 +35,7 @@
 // On an arduino UNO:       A4(SDA), A5(SCL)
 // On an arduino MEGA 2560: 20(SDA), 21(SCL)
 // On an arduino LEONARDO:   2(SDA),  3(SCL), ...
-#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define OLED_RESET     16 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -48,7 +50,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
  * Weird blip in the center of the window.
  */
 #define QUAD_A 12
-#define QUAD_B 14
+#define QUAD_B 13
 
 #define LED_A 0
 #define LED_B 2
@@ -56,10 +58,12 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #include "config.h"
 static char device_id[16];
 
+#ifdef CONFIG_WEBSERVER
 ESP8266WebServer server(80);
+#endif
 WebSocketsServer webSocket = WebSocketsServer(81);
 
-static const uint8_t webpage[] = {
+static const uint8_t webpage[] PROGMEM = {
 #include "index.html.h"
 };
 
@@ -98,8 +102,10 @@ void setup()
 	//pinMode(QUAD_A, INPUT);
 	//pinMode(QUAD_B, INPUT);
 
+#ifdef CONFIG_LEDS
 	pinMode(LED_A, OUTPUT);
 	pinMode(LED_B, OUTPUT);
+#endif
 
 	// SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
 	if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
@@ -107,9 +113,14 @@ void setup()
 		for(;;); // Don't proceed, loop forever
 	}
 
-	// Show initial display buffer contents on the screen --
-	// the library initializes this with an Adafruit splash screen.
-	display.display();
+	display.clearDisplay();
+
+	display.setRotation(2);	// flipped 180
+	display.setTextSize(1);      // Normal 1:1 pixel scale
+	display.setTextColor(SSD1306_WHITE); // Draw white text
+	display.setCursor(0, 0);     // Start at top-left corner
+	display.cp437(true);         // Use full 256 char 'Code Page 437' font
+
 
 	uint8_t mac_bytes[6];
 	WiFi.macAddress(mac_bytes);
@@ -123,38 +134,48 @@ void setup()
 	);
 
 	Serial.println(String(device_id) + " connecting to " + String(WIFI_SSID));
+
+	display.println(device_id);
+	display.println(WIFI_SSID);
+	display.display();
+
 	WiFi.persistent(false);
 	WiFi.mode(WIFI_STA);
 	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-	Serial.print(".");
 
 	while (WiFi.status() != WL_CONNECTED ) {
+#ifdef CONFIG_LEDS
 		digitalWrite(LED_A, 1);
-		delay(100);
+		delay(250);
 		digitalWrite(LED_A, 0);
+#else
+		delay(250);
+#endif
 		Serial.print(".");
+		display.print(".");
+		display.display();
 	}
 
 	Serial.println("WiFi connected\r\n");
 	Serial.print("IP address: ");
 	Serial.println(WiFi.localIP());
 
+	display.setCursor(0, 24);
+	display.println(WiFi.localIP());
+	display.display();
+
 	// start webSocket server
 	webSocket.begin();
 	webSocket.onEvent(webSocketEvent);
 
-	MDNS.begin(WIFI_HOSTNAME);
-
+#ifdef CONFIG_WEBSERVER
 	server.on("/", []() {
         	// send index.html (should be gzip'ed, but :whatever:)
         	server.send(200, "text/html", webpage, sizeof(webpage));
 	});
 
-    server.begin();
-
-    // Add service to MDNS
-    MDNS.addService("http", "tcp", 80);
-    MDNS.addService("ws", "tcp", 81);
+	server.begin();
+#endif
 }
 
 int last_a;
@@ -176,15 +197,19 @@ unsigned spm;
 void loop()
 {
 	webSocket.loop();
+#ifdef CONFIG_WEBSERVER
 	server.handleClient();
+#endif
 
 	int got_tick = 0;
 	const int a = digitalRead(QUAD_A);
 	const int b = digitalRead(QUAD_B);
 	const unsigned now = micros();
 
+#ifdef CONFIG_LEDS
 	digitalWrite(LED_A, a);
 	digitalWrite(LED_B, !b);
+#endif
 
 	if (a && b)
 	{
@@ -265,6 +290,7 @@ void loop()
 
 			// blank line to mark the log
 			Serial.println();
+
 		}
 
 		stroke_power += force;
@@ -275,4 +301,13 @@ void loop()
 	String msg = String("") + now + "," + (now - start_usec) + "," + delta_usec + "," + force + "," + stroke_power + "," + spm;
 	Serial.println(msg);
 	webSocket.broadcastTXT(msg);
+
+	display.clearDisplay();
+	display.setCursor(0, 0);
+	display.setTextSize(3);
+	display.print(spm);
+
+	display.setCursor(72, 8);
+	display.print(stroke_power >> 20);
+	display.display();
 }
