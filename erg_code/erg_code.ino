@@ -17,6 +17,9 @@
 #define CONFIG_LEDS
 #define CONFIG_WEBSERVER
 
+#include <stdint.h>
+#include <stdarg.h>
+
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <WebSocketsServer.h>
@@ -26,6 +29,12 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+
+#include "DinBold8pt7b.h"
+//#include "DinBold12pt7b.h"
+#include "DinBold15pt7b.h"
+#define FONT_MED &DinBold8pt7b
+#define FONT_BIG &DinBold15pt7b
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
@@ -39,6 +48,41 @@
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+#define LEFT	0x00
+#define RIGHT	0x01
+#define CENTER	0x03
+#define BOTTOM	0x00
+#define TOP	0x10
+#define VCENTER	0x30
+
+void drawtext(int x, int y, int center, const char * fmt, ...)
+{
+	char buf[40];
+	va_list ap;
+	va_start(ap, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, ap);
+	va_end(ap);
+
+	int16_t x1, y1;
+	uint16_t w, h;
+	display.getTextBounds(buf, 0, 0, &x1, &y1, &w, &h);
+	//printf("'%s' %d %d %d %d\r\n", buf, x1, y1, w, h);
+
+	if ((center & 0x0F) == RIGHT)
+		x = x - w;
+	else
+	if ((center & 0x0F) == CENTER)
+		x = x - w/2;
+
+	if ((center & 0xF0) == TOP)
+		y = y + h;
+	else
+	if ((center & 0xF0) == VCENTER)
+		y = y + h/2;
+
+	display.setCursor(x, y);
+	display.write(buf);
+}
 
 /*
  * Quadrature modes:
@@ -193,6 +237,8 @@ unsigned stroke_power;
 int delta_usec;
 int last_delta_usec;
 unsigned spm;
+unsigned ticks;
+unsigned last_ticks;
 
 void loop()
 {
@@ -287,6 +333,8 @@ void loop()
 			
 			start_usec = now;
 			stroke_power = 0;
+			last_ticks = ticks;
+			ticks = 0;
 
 			// blank line to mark the log
 			Serial.println();
@@ -294,6 +342,7 @@ void loop()
 		}
 
 		stroke_power += force;
+		ticks++;
 	}
 
 	last_delta_usec = delta_usec;
@@ -303,11 +352,29 @@ void loop()
 	webSocket.broadcastTXT(msg);
 
 	display.clearDisplay();
-	display.setCursor(0, 0);
-	display.setTextSize(3);
-	display.print(spm);
+	display.setFont();
+	display.setCursor(0,0);
+	display.write("SPM");
+	display.setCursor(110,0);
+	display.write("POW");
 
-	display.setCursor(72, 8);
-	display.print(stroke_power >> 20);
+	display.setFont(FONT_BIG);
+	drawtext(38, 31, BOTTOM|RIGHT, "%d", spm / 10);
+	display.setFont(FONT_MED);
+	drawtext(43, 31, BOTTOM|LEFT, "%d", spm % 10);
+
+	display.setFont(FONT_BIG);
+	drawtext(123, 31, BOTTOM|RIGHT, "%d", stroke_power / 1000000);
+
+	const int tick_scale = 5;
+	display.fillRect(32, 0, ticks * tick_scale, 4, 1);
+	//display.drawFastVLine(32 + last_ticks * tick_scale, 0, 8, 1);
+	display.fillTriangle(
+		32 + last_ticks * tick_scale, 4,
+		32 + last_ticks * tick_scale-2, 8,
+		32 + last_ticks * tick_scale+2, 8,
+		1
+	);
+
 	display.display();
 }
