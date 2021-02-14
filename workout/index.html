@@ -61,7 +61,7 @@ function setup()
 	// connect to the rower's websocket and append any new data as it comes in
 	let host = location.hostname;
 	if (!host)
-		host = "192.168.178.50";
+		host = "192.168.178.51";
 	let connection = new WebSocket('ws://' + host + ':81/', ['arduino']);
 	connection.onopen = function () { connection.send('Connect ' + new Date()); };
 	connection.onerror = function (error) { console.log('WebSocket Error ', error);};
@@ -200,6 +200,8 @@ function draw()
 	pop();
 
 	// draw the strokes per minute
+	let last_spm = new_data[5];
+
 	push();
 	translate(400,0);
 	let [spm_sum,spm_dt,spm_samples] =
@@ -209,7 +211,7 @@ function draw()
 	noStroke();
 	textSize(50);
 	textAlign(RIGHT, BOTTOM);
-	text(new_data[5], width-400, 100);
+	text(last_spm, width-400, 100);
 
 	pop();
 
@@ -244,7 +246,7 @@ function draw()
 
 	fill(0);
 	noStroke();
-	rect(0,0, width, 150);
+	rect(0,0, width, 200);
 
 	fill(0xff);
 	textSize(60);
@@ -263,6 +265,9 @@ function draw()
 	if (power_samples != 0)
 		power_avg = (power_total / power_samples).toFixed(0);
 	text(power_total + " power @ " + power_avg + "/stroke", width, 130);
+
+	// work/minute for "pace"
+	text((last_work * last_spm).toFixed(0) + " work/min",  width, 190);
 
 	// workout time
 	let total_time = int(power_dt / 1000);
