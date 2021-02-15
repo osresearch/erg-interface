@@ -167,12 +167,25 @@ function draw_strip(d,w,h,index,max,scale_step)
 
 	stroke(0xff);
 	strokeWeight(2);
-	beginShape();
+	let drawing = 0;
 
 	for(let p of data)
 	{
+		if (p[2] == 0)
+		{
+			if (drawing)
+				endShape();
+			drawing = 0;
+			continue;
+		}
+
 		if (p[1] != 0)
 			continue;
+
+		if (!drawing)
+			beginShape();
+		drawing = 1;
+
 		let v = p[index];
 		total += v;
 		samples++;
@@ -182,7 +195,8 @@ function draw_strip(d,w,h,index,max,scale_step)
 		vertex(x, h - y);
 	}
 
-	endShape();
+	if (drawing)
+		endShape();
 
 	return [total,delta,samples];
 }
