@@ -48,6 +48,7 @@ let data = [];
 let total_work = 0;
 let last_work = 0;
 let total_strokes = 0;
+let inst_power_total = 0;
 
 function setup()
 {
@@ -76,6 +77,10 @@ function setup()
 		new_data[3] /= 500000.0;
 		new_data[4] /= 500000.0;
 		new_data[5] /= 10.0;
+
+		// track total power for the workout
+		if (new_data[2] > 0)
+			inst_power_total += new_data[3];
 
 		// fake out the last power measurement, just in case
 		if (new_data[1] == 0)
@@ -278,7 +283,7 @@ function draw()
 	let power_avg = "???";
 	if (power_samples != 0)
 		power_avg = (power_total / power_samples).toFixed(0);
-	text(power_total + " power @ " + power_avg + "/stroke", width, 130);
+	text(inst_power_total.toFixed(2) + " power @ " + power_avg + "/stroke", width, 130);
 
 	// work/minute for "pace"
 	text((last_work * last_spm).toFixed(0) + " work/min",  width, 190);
