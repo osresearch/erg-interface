@@ -230,6 +230,7 @@ int last_b;
 int fall_b;
 int rise_b;
 
+unsigned long last_update;
 int do_output;
 
 unsigned start_usec;
@@ -305,14 +306,21 @@ void loop()
 	last_b = b;
 
 	if (!got_tick)
-		return;
+	{
+		if (now - last_update < 1000000)
+			return;
+		// it has been a second since our update, send a zero-force notice
+		delta_usec = 0;
+		spm = 0;
+		stroke_power = 0;
+	}
 
 	// we have received a new data point,
 	// process it and output the update on the serial port
 
 	// need a scaling factor to compute how much
 	// force they are applying.
-	const int vel = 100000000L / delta_usec;
+	const int vel = delta_usec ? 100000000L / delta_usec : 0;
 	const int force = vel * vel;
 
 	// on positive velocity pulls, check for a sign change
@@ -324,7 +332,7 @@ void loop()
 		if (delta_usec < 2500)
 			return;
 
-		if (last_delta_usec < 0)
+		if (last_delta_usec <= 0)
 		{
 			// sign change: this is the start of a new stroke
 			// compute spm * 10
@@ -346,6 +354,7 @@ void loop()
 	}
 
 	last_delta_usec = delta_usec;
+	last_update = now;
 
 	String msg = String("") + now + "," + (now - start_usec) + "," + delta_usec + "," + force + "," + stroke_power + "," + spm;
 	Serial.println(msg);
