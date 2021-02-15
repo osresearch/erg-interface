@@ -360,6 +360,10 @@ void loop()
 	Serial.println(msg);
 	webSocket.broadcastTXT(msg);
 
+	// only update the display if this is a real stroke
+	if (spm == 0)
+		return;
+
 	display.clearDisplay();
 	display.setFont();
 	display.setCursor(0,0);
