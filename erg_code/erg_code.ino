@@ -129,7 +129,7 @@ webSocketEvent(
 		Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
 
 		// send message to client
-		webSocket.sendTXT(num, "Connected");
+		webSocket.sendTXT(num, "time_usec,stroke_usec,tick_usec,pow,vel");
 		}
 		break;
         case WStype_TEXT:
@@ -247,11 +247,39 @@ void loop()
 #ifdef CONFIG_WEBSERVER
 	server.handleClient();
 #endif
+	const unsigned now = micros();
+
+#define PHYSICS_DT_USEC 10000
+static float drift_constant = 0.2; // drop 20% speed every second
+static float drag_constant = 0.002;
+static unsigned long last_step;
+static float oar_vel;
+static float oar_force;
+static float vel;
+static float vel_smooth;
+static float smoothing = 512;
+
+
+	// run the physics loop at least at PHYSICS_DT
+	const unsigned long dt_usec = now - last_step;
+	if (dt_usec > PHYSICS_DT_USEC)
+	{
+		// decay the boat velocity
+		const float dt = dt_usec * 1.0e-6;
+		last_step = now;
+		vel -= vel * drift_constant * dt;
+
+		// add any force from the oar, minus the drag of the
+		const float drag = vel * vel * drag_constant;
+		vel += (oar_force - drag) * dt;
+
+		// low-pass filter the velocity for output
+		vel_smooth = (vel_smooth * smoothing + vel) / (smoothing + 1);
+	}
 
 	int got_tick = 0;
 	const int a = digitalRead(QUAD_A);
 	const int b = digitalRead(QUAD_B);
-	const unsigned now = micros();
 
 #ifdef CONFIG_LEDS
 	digitalWrite(LED_A, a);
@@ -318,15 +346,15 @@ void loop()
 	// we have received a new data point,
 	// process it and output the update on the serial port
 
-	// need a scaling factor to compute how much
-	// force they are applying.
-	const int vel = delta_usec ? 100000000L / delta_usec : 0;
-	const int force = vel * vel;
-
 	// on positive velocity pulls, check for a sign change
 	// for tracking power and distance
 	if (delta_usec > 0)
 	{
+		// need a scaling factor to compute how much
+		// force they are applying.
+		oar_vel = 1.0e5 / delta_usec;
+		oar_force = oar_vel * oar_vel;
+
 		// if the delta_usec is too fast, this is probably an error
 		// and we should discard this point.100000000
 		if (delta_usec < 2500)
@@ -346,17 +374,20 @@ void loop()
 
 			// blank line to mark the log
 			Serial.println();
-
 		}
 
-		stroke_power += force;
+		stroke_power += oar_force;
 		ticks++;
+	} else {
+		// return stroke. anything to do?
+		oar_vel = 0;
+		oar_force = 0;
 	}
 
 	last_delta_usec = delta_usec;
 	last_update = now;
 
-	String msg = String("") + now + "," + (now - start_usec) + "," + delta_usec + "," + force + "," + stroke_power + "," + spm;
+	String msg = String("") + now + "," + (now - start_usec) + "," + delta_usec + "," + String(oar_force,3) + "," + stroke_power + "," + spm + "," + String(vel,3) + "," + String(vel_smooth,3);
 	Serial.println(msg);
 	webSocket.broadcastTXT(msg);
 
@@ -377,7 +408,11 @@ void loop()
 	drawtext(43, 31, BOTTOM|LEFT, "%d", spm % 10);
 
 	display.setFont(FONT_BIG);
-	drawtext(123, 31, BOTTOM|RIGHT, "%d", stroke_power / 1000000);
+	//drawtext(123, 31, BOTTOM|RIGHT, "%d", stroke_power / 1000000);
+	int v = int(10 * vel_smooth);
+	drawtext(113, 31, BOTTOM|RIGHT, "%d", v / 10);
+	display.setFont(FONT_MED);
+	drawtext(118, 31, BOTTOM|LEFT, "%d", v % 10);
 
 	const int tick_scale = 5;
 	display.fillRect(32, 0, ticks * tick_scale, 4, 1);
