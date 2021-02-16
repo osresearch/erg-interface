@@ -129,7 +129,7 @@ webSocketEvent(
 		Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
 
 		// send message to client
-		webSocket.sendTXT(num, "time_usec,stroke_usec,tick_usec,pow,vel");
+		webSocket.sendTXT(num, "time_usec,stroke_usec,tick_usec,force,stroke_power,spm,vel_inst,vel");
 		}
 		break;
         case WStype_TEXT:
@@ -257,7 +257,9 @@ static float oar_vel;
 static float oar_force;
 static float vel;
 static float vel_smooth;
-static float smoothing = 512;
+static float vel_smoothing = 512;
+static float spm_smooth;
+static float spm_smoothing = 128;
 
 
 	// run the physics loop at least at PHYSICS_DT
@@ -274,7 +276,8 @@ static float smoothing = 512;
 		vel += (oar_force - drag) * dt;
 
 		// low-pass filter the velocity for output
-		vel_smooth = (vel_smooth * smoothing + vel) / (smoothing + 1);
+		vel_smooth = (vel_smooth * vel_smoothing + vel) / (vel_smoothing + 1);
+		spm_smooth = (spm_smooth * spm_smoothing + spm) / (spm_smoothing + 1);
 	}
 
 	int got_tick = 0;
@@ -387,25 +390,28 @@ static float smoothing = 512;
 	last_delta_usec = delta_usec;
 	last_update = now;
 
-	String msg = String("") + now + "," + (now - start_usec) + "," + delta_usec + "," + String(oar_force,3) + "," + stroke_power + "," + spm + "," + String(vel,3) + "," + String(vel_smooth,3);
+	String msg = String("") + now + "," + (now - start_usec) + "," + delta_usec + "," + String(oar_force,3) + "," + stroke_power + "," + String(spm_smooth,1) + "," + String(vel,3) + "," + String(vel_smooth,1);
 	Serial.println(msg);
 	webSocket.broadcastTXT(msg);
 
 	// only update the display if this is a real stroke
+/*
 	if (spm == 0)
 		return;
+*/
 
 	display.clearDisplay();
 	display.setFont();
 	display.setCursor(0,0);
 	display.write("SPM");
 	display.setCursor(110,0);
-	display.write("POW");
+	display.write("VEL");
 
 	display.setFont(FONT_BIG);
-	drawtext(38, 31, BOTTOM|RIGHT, "%d", spm / 10);
+	int s = int(1 * spm_smooth);
+	drawtext(38, 31, BOTTOM|RIGHT, "%d", s / 10);
 	display.setFont(FONT_MED);
-	drawtext(43, 31, BOTTOM|LEFT, "%d", spm % 10);
+	drawtext(43, 31, BOTTOM|LEFT, "%d", s % 10);
 
 	display.setFont(FONT_BIG);
 	//drawtext(123, 31, BOTTOM|RIGHT, "%d", stroke_power / 1000000);
