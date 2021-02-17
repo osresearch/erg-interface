@@ -390,7 +390,16 @@ static float spm_smoothing = 128;
 	last_delta_usec = delta_usec;
 	last_update = now;
 
-	String msg = String("") + now + "," + (now - start_usec) + "," + delta_usec + "," + String(oar_force,3) + "," + stroke_power + "," + String(spm_smooth,1) + "," + String(vel,3) + "," + String(vel_smooth,1);
+	String msg = String("")
+		+ now + ","
+		+ (now - start_usec) + ","
+		+ delta_usec + ","
+		+ String(oar_force,3) + ","
+		+ stroke_power + ","
+		+ String(spm_smooth/10,1)
+		+ "," + String(vel,3)
+		+ "," + String(vel_smooth,1);
+
 	Serial.println(msg);
 	webSocket.broadcastTXT(msg);
 
