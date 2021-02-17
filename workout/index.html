@@ -68,15 +68,15 @@ function setup()
 	connection.onerror = function (error) { console.log('WebSocket Error ', error);};
 	connection.onmessage = function (e) {
 		console.log('Server: ', e.data);
-		if (e.data == "Connected")
-			return;
-
 		new_data = e.data.split(',');
+		if (new_data[0] == 'time_usec')
+		{
+			new_data = null;
+			return;
+		}
 
-		// fix up the power and spm colun
-		new_data[3] /= 500000.0;
-		new_data[4] /= 500000.0;
-		new_data[5] /= 10.0;
+		for(let i=0 ; i < new_data.length ; i++)
+			new_data[i] = +new_data[i];
 
 		// track total power for the workout
 		if (new_data[2] > 0)
@@ -238,13 +238,26 @@ function draw()
 	push();
 	translate(400,200);
 	let [power_total,power_dt,power_samples] =
-		draw_strip(new_data, width-400, 200, 4, 500, 100);
+		draw_strip(new_data, width-400, 200, 4, 200, 50);
 
 	fill(0xff);
 	noStroke();
 	textSize(50);
 	textAlign(RIGHT, BOTTOM);
 	text(int(last_work), width-400, 100);
+
+	pop();
+
+	push();
+	translate(400,400);
+	let [vel_total,vel_dt,vel_samples] =
+		draw_strip(new_data, width-400, 200, 7, 30, 5);
+
+	fill(0xff);
+	noStroke();
+	textSize(80);
+	textAlign(RIGHT, BOTTOM);
+	text(new_data[7].toFixed(1), width-400, 100);
 
 	pop();
 
@@ -261,7 +274,7 @@ function draw()
 
 	// draw the summary stats at the bottom in a large font
 	push();
-	translate(0,400);
+	translate(0,600);
 
 	fill(0);
 	noStroke();
@@ -273,6 +286,7 @@ function draw()
 
 	// average strokes per minute (scaled from microseconds)
 	let spm_avg = "???"
+	console.log(spm_dt, spm_samples);
 	if (spm_dt != 0)
 		spm_avg = (spm_samples / (spm_dt / 60e6)).toFixed(1);
 
