@@ -262,15 +262,23 @@ function draw()
 	pop();
 
 	// count the number of positive ticks to estimate distance
+	// in the same fashion as the built-in computer, as well
+	// as by integrating the velocity value
 	let ticks = 0;
+	let prev_t = 0;
+	let vel_dist = 0;
 	for(let d of data)
 	{
 		if (d[2] > 0)
 			ticks++;
+		if (prev_t == 0)
+			prev_t = d[0];
+		vel_dist += (d[0] - prev_t) * d[6];
 	}
 
 	const ticks_to_m = 1.18;
 	let distance = (ticks * ticks_to_m).toFixed(1);
+	vel_dist *= 1e-6 * 0.002; // total rough guess
 
 	// draw the summary stats at the bottom in a large font
 	push();
@@ -278,7 +286,7 @@ function draw()
 
 	fill(0);
 	noStroke();
-	rect(0,0, width, 200);
+	rect(0,0, width, 300);
 
 	fill(0xff);
 	textSize(60);
@@ -330,6 +338,8 @@ function draw()
 	textSize(100);
 	textAlign(LEFT, BOTTOM);
 	text(time_str, 0, 120);
+
+	text(vel_dist.toFixed(1), 0, 230);
 
 	pop();
 
