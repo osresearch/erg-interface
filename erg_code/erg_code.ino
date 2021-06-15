@@ -30,6 +30,11 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+#include "PubSubClient.h"
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
 #include "DinBold8pt7b.h"
 //#include "DinBold12pt7b.h"
 #include "DinBold15pt7b.h"
@@ -220,6 +225,8 @@ void setup()
 
 	server.begin();
 #endif
+
+	client.setServer("dashboard", 1883);
 }
 
 int last_a;
@@ -244,10 +251,20 @@ unsigned last_ticks;
 void loop()
 {
 	webSocket.loop();
+
 #ifdef CONFIG_WEBSERVER
 	server.handleClient();
 #endif
 	const unsigned now = micros();
+	static unsigned last_client_connect;
+
+	if (!client.connected() && now - last_client_connect > 1000)
+	{
+		last_client_connect = now;
+		client.connect("rowing");
+	}
+
+	client.loop();
 
 #define PHYSICS_DT_USEC 10000
 static float drift_constant = 0.2; // drop 20% speed every second
@@ -403,6 +420,15 @@ static float spm_smoothing = 128;
 
 	Serial.println(msg);
 	webSocket.broadcastTXT(msg);
+
+	if (client.connected() && vel_smooth > 0.001)
+	{
+		client.publish("rowing/sensor/force/state", String(oar_force,3).c_str());
+		client.publish("rowing/sensor/power/state", String(stroke_power*1.0,1).c_str());
+		client.publish("rowing/sensor/vel/state", String(vel,3).c_str());
+		client.publish("rowing/sensor/spm/state", String(spm_smooth/10.0,1).c_str());
+	}
+
 
 	// only update the display if this is a real stroke
 /*
